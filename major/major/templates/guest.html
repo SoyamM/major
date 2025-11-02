@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guest Dashboard</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+    * {margin:0; padding:0; box-sizing:border-box;}
+
+    body {
+      height:100vh; display:flex; justify-content:center; align-items:center; flex-direction:column;
+      background: radial-gradient(circle at 30% 30%, #443256 0%, #0f023d 60%, #595656 100%);
+      overflow:hidden; font-family:"Poppins",sans-serif; color:#fff; position:relative;
+    }
+
+    header {font-size:2rem; font-weight:600; margin-bottom:40px; text-shadow:0 0 25px rgba(255,255,255,0.4); z-index:3;}
+    #threedd {position:absolute; width:1000px; height:900px; top:50%; left:50%; transform:translate(-50%,-50%); z-index:0; opacity:0.9; filter:brightness(1.3) contrast(1.2); pointer-events:none;}
+    .glass-container {display:flex; gap:100px; z-index:2;}
+
+    .glass-box {
+      width:180px; height:180px; background:rgba(255,255,255,0.07); border-radius:40px; border:1px solid rgba(255,255,255,0.2);
+      backdrop-filter:blur(8px); display:flex; justify-content:center; align-items:center; font-size:1.3rem; font-weight:600;
+      color:#fff; cursor:pointer; transition:all 0.4s ease; position:relative;
+      box-shadow:inset 2px 2px 10px rgba(255,255,255,0.25),inset -2px -2px 10px rgba(0,0,0,0.5),0 0 25px rgba(255,255,255,0.05);
+    }
+
+    .glass-box::before {content:""; position:absolute; inset:0; border-radius:40px; background:linear-gradient(145deg,rgba(255,255,255,0.3),rgba(255,255,255,0)); opacity:0.6; pointer-events:none;}
+    .glass-box:hover {transform:translateY(-10px) scale(1.08); background:rgba(255,255,255,0.12); box-shadow:inset 3px 3px 12px rgba(255,255,255,0.35),inset -3px -3px 12px rgba(0,0,0,0.6),0 0 40px rgba(255,255,255,0.2);}
+
+    #camera-container {
+      position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:none; justify-content:center; align-items:center; z-index:20; flex-direction:column;
+    }
+
+    #video-feed {width:320px; height:240px; border-radius:15px; border:2px solid rgba(255,255,255,0.3);}
+    .rec-controls {margin-top:20px; display:flex; gap:15px; flex-wrap:wrap; justify-content:center;}
+    #timer {margin:15px 0; font-size:1.4rem; color:#a0f7a0; font-weight:600;}
+    .rec-btn {width:100px; height:40px; font-size:1rem; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.3); border-radius:15px; color:#fff; cursor:pointer;}
+
+    #send-btn {
+      background:#4CAF50; color:white; border:none; padding:10px 20px; border-radius:15px; font-size:1rem; cursor:pointer; margin-top:15px; display:none;
+    }
+
+    #name-input {width:260px; padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.1); color:#fff; margin-bottom:10px; font-size:1rem;}
+
+    footer {position:absolute; bottom:25px; font-size:14px; opacity:0.8; z-index:3;}
+  </style>
+</head>
+<body>
+  <header>Guest Dashboard</header>
+  <model-viewer id="threedd" src="/static/robot_playground.glb" autoplay auto-rotate camera-controls shadow-intensity="1" exposure="1.3" disable-zoom></model-viewer>
+
+  <div class="glass-container">
+    <div class="glass-box" id="record-btn">Record Message</div>
+    <div class="glass-box" id="schedule-btn">Schedule Meeting</div>
+  </div>
+
+  <div id="camera-container">
+    <input type="text" id="name-input" placeholder="Your Name" value="Guest" />
+    <video id="video-feed" autoplay muted playsinline></video>
+    <div id="timer">00:00</div>
+    <div class="rec-controls">
+      <button class="rec-btn" id="start-rec">Start</button>
+      <button class="rec-btn" id="pause-rec" style="display:none;">Pause</button>
+      <button class="rec-btn" id="stop-rec" style="display:none;">Stop</button>
+    </div>
+    <button id="send-btn">Send to Admin</button>
+  </div>
+
+  <footer>AI Access System - Guest Mode</footer>
+
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
+  <script>
+    const recordBtn = document.getElementById('record-btn');
+    const cameraContainer = document.getElementById('camera-container');
+    const video = document.getElementById('video-feed');
+    const startRec = document.getElementById('start-rec');
+    const pauseRec = document.getElementById('pause-rec');
+    const stopRec = document.getElementById('stop-rec');
+    const sendBtn = document.getElementById('send-btn');
+    const timer = document.getElementById('timer');
+    const nameInput = document.getElementById('name-input');
+
+    let stream, recorder, chunks = [], startTime, timerInterval;
+
+    recordBtn.addEventListener('click', async () => {
+      cameraContainer.style.display = 'flex';
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      video.srcObject = stream;
+    });
+
+    startRec.addEventListener('click', () => {
+      chunks = [];
+      recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = e => chunks.push(e.data);
+
+      recorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: 'video/mp4' });
+        const formData = new FormData();
+        formData.append('video', blob);
+        formData.append('name', nameInput.value.trim() || 'Guest');
+
+        try {
+          const res = await fetch('/record_video', { method: 'POST', body: formData });
+          const data = await res.json();
+          if (data.success) {
+            alert('Video sent to admin!');
+          }
+        } catch (err) {
+          alert('Upload failed.');
+        }
+
+        cameraContainer.style.display = 'none';
+        stream.getTracks().forEach(t => t.stop());
+        timer.textContent = '00:00';
+        sendBtn.style.display = 'none';
+        startRec.style.display = 'inline-block';
+        pauseRec.style.display = 'none';
+        stopRec.style.display = 'none';
+        pauseRec.textContent = 'Pause';
+      };
+
+      recorder.start();
+      pauseRec.style.display = 'inline-block';
+      stopRec.style.display = 'inline-block';
+      startRec.style.display = 'none';
+      sendBtn.style.display = 'none';
+
+      startTime = Date.now();
+      timerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+        const s = String(elapsed % 60).padStart(2, '0');
+        timer.textContent = `${m}:${s}`;
+      }, 1000);
+    });
+
+    pauseRec.addEventListener('click', () => {
+      if (recorder.state === 'recording') {
+        recorder.pause();
+        pauseRec.textContent = 'Resume';
+        clearInterval(timerInterval);
+      } else if (recorder.state === 'paused') {
+        recorder.resume();
+        pauseRec.textContent = 'Pause';
+        startTime = Date.now() - (parseInt(timer.textContent.split(':')[0]) * 60 + parseInt(timer.textContent.split(':')[1])) * 1000;
+        timerInterval = setInterval(() => {
+          const elapsed = Math.floor((Date.now() - startTime) / 1000);
+          const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+          const s = String(elapsed % 60).padStart(2, '0');
+          timer.textContent = `${m}:${s}`;
+        }, 1000);
+      }
+    });
+
+    stopRec.addEventListener('click', () => {
+      recorder.stop();
+      clearInterval(timerInterval);
+      sendBtn.style.display = 'block';
+    });
+
+    sendBtn.addEventListener('click', () => {
+      recorder.stop();
+      clearInterval(timerInterval);
+    });
+
+    // Schedule Button
+    document.getElementById('schedule-btn').addEventListener('click', async () => {
+      const name = prompt('Your Name:', 'Guest') || 'Guest';
+      const res = await fetch('/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Meeting scheduled for today at ${data.time}`);
+      } else {
+        const tomorrow = prompt(`No slots today. Schedule for tomorrow (${data.tomorrow})? Enter name:`, name);
+        if (tomorrow) {
+          await fetch('/schedule_tomorrow', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date: data.tomorrow, name: tomorrow })
+          });
+          alert('Meeting scheduled for tomorrow!');
+        }
+      }
+    });
+  </script>
+</body>
+</html>

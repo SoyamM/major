@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+    * {margin:0; padding:0; box-sizing:border-box;}
+
+    body {
+      min-height:100vh;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      flex-direction:column;
+      background: radial-gradient(circle at 30% 30%, #443256 0%, #0f023d 60%, #595656 100%);
+      overflow-y: auto;
+      font-family:"Poppins", sans-serif;
+      color:#fff;
+      position:relative;
+      padding: 20px 0;
+    }
+
+    header {font-size:2rem; font-weight:600; margin-bottom:20px; text-shadow:0 0 25px rgba(255,255,255,0.4); z-index:3;}
+    #threedd {position:absolute; width:1000px; height:900px; top:50%; left:50%; transform:translate(-50%, -50%); z-index:0; opacity:0.9; filter:brightness(1.3) contrast(1.2); pointer-events:none;}
+    .glass-container {display:flex; flex-wrap:wrap; gap:40px; z-index:2; max-width:1200px; justify-content:center; margin-bottom:40px;}
+
+    .glass-box {
+      width:300px; min-height:200px; background:rgba(255,255,255,0.07); border-radius:40px; border:1px solid rgba(255,255,255,0.2);
+      backdrop-filter:blur(8px); padding:20px; color:#fff; transition:all 0.4s ease; position:relative;
+      box-shadow:inset 2px 2px 10px rgba(255,255,255,0.25),inset -2px -2px 10px rgba(0,0,0,0.5),0 0 25px rgba(255,255,255,0.05);
+    }
+
+    .glass-box::before {content:""; position:absolute; inset:0; border-radius:40px; background:linear-gradient(145deg, rgba(255,255,255,0.3), rgba(255,255,255,0)); opacity:0.6; pointer-events:none;}
+    .glass-box:hover {transform:translateY(-10px) scale(1.05); background:rgba(255,255,255,0.12); box-shadow:inset 3px 3px 12px rgba(255,255,255,0.35),inset -3px -3px 12px rgba(0,0,0,0.6),0 0 40px rgba(255,255,255,0.2);}
+
+    .clock {position: fixed; top: 20px; right: 20px; width: 100px; height: 100px; background: transparent; z-index: 10;}
+    .dot {width:6px;height:6px;border-radius:50%;background:#ccc;top:0;left:0;right:0;bottom:0;margin:auto;position:absolute;z-index:10;}
+    .hour-hand {position:absolute;z-index:5;width:2px;height:25px;background:#fff;top:30px;transform-origin:50% 27.5px;left:50%;margin-left:-1px;}
+    .minute-hand {position:absolute;z-index:6;width:2px;height:40px;background:#ddd;top:17.5px;left:50%;margin-left:-1px;transform-origin:50% 42.5px;}
+    .second-hand {position:absolute;z-index:7;width:1px;height:45px;background:gold;top:12.5px;left:50%;margin-left:-0.5px;transform-origin:50% 47.5px;}
+    .diallines {position:absolute;z-index:2;width:1px;height:5px;background:#aaa;left:50%;margin-left:-0.5px;transform-origin:50% 50px;}
+    .diallines:nth-of-type(5n) {width:1px;height:7px;}
+
+    .glass-select {
+      width:100%; padding:12px 16px; margin-top:10px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.25);
+      border-radius:18px; color:#fff; font-size:1rem; font-family:"Poppins",sans-serif; backdrop-filter:blur(10px);
+      appearance:none; cursor:pointer; position:relative; transition:all 0.3s ease; height:48px; overflow:hidden;
+      box-shadow:inset 2px 2px 6px rgba(255,255,255,0.15),inset -2px -2px 6px rgba(0,0,0,0.4),0 0 15px rgba(255,255,255,0.1);
+    }
+
+    .glass-select:focus {outline:none; background:rgba(255,255,255,0.15); box-shadow:inset 3px 3px 8px rgba(255,255,255,0.25),inset -3px -3px 8px rgba(0,0,0,0.5),0 0 25px rgba(255,255,255,0.3);}
+    .glass-select option {background:rgba(30,10,60,0.95); color:#fff; padding:10px;}
+
+    .select-wrapper {position:relative; margin-top:10px;}
+    .select-wrapper::after {content:"Down Arrow"; position:absolute; right:16px; top:50%; transform:translateY(-50%); color:rgba(255,255,255,0.7); pointer-events:none; font-size:0.8rem;}
+
+    .delete-btn, .cancel-btn {
+      background:linear-gradient(145deg,#ff4d4d,#cc0000); color:white; border:none; padding:8px; border-radius:10px;
+      font-size:0.8rem; cursor:pointer; margin-top:5px; width:100%; transition:0.3s;
+    }
+    .cancel-btn {background:linear-gradient(145deg,#ffa500,#cc8400);}
+    .delete-btn:hover, .cancel-btn:hover {transform:translateY(-2px); box-shadow:0 6px 20px rgba(255,77,77,0.5);}
+
+    footer {margin-top:20px; font-size:14px; opacity:0.8; z-index:3;}
+  </style>
+</head>
+<body>
+  <header>Admin Dashboard - Welcome, {{ Soyam }}</header>
+  <model-viewer id="threedd" src="/static/robot_playground.glb" autoplay auto-rotate camera-controls shadow-intensity="1" exposure="1.3" disable-zoom></model-viewer>
+
+  <div class="clock">
+    <div class="dot"></div>
+    <div class="hour-hand"></div>
+    <div class="minute-hand"></div>
+    <div class="second-hand"></div>
+  </div>
+
+  <div class="glass-container">
+    <div class="glass-box">
+      <h2>Calendar</h2>
+      <p>{{ today_date | replace('-', '/') }}</p>
+      <p>Sunday</p>
+    </div>
+
+    <div class="glass-box">
+      <h2>Meetings Today</h2>
+      <div id="today-slots">
+        {% for slot in slots_today %}
+          <div style="margin:5px 0; display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:0.9rem;">
+              {{ slot.time }} - 
+              {% if slot.booked %}{{ slot.guest|e }}{% else %}Available{% endif %}
+            </span>
+            {% if slot.booked %}
+              <button class="cancel-btn" data-index="{{ loop.index0 }}">Cancel</button>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="glass-box">
+      <h2>Meetings Tomorrow</h2>
+      <div class="select-wrapper">
+        <select class="glass-select">
+          {% for slot in slots_tomorrow %}
+            <option>{{ slot.time }} - {% if slot.booked %}{{ slot.guest|e }}{% else %}Available{% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="glass-box">
+      <h2>Guest Video Messages</h2>
+      <div class="select-wrapper">
+        <select id="video-select" class="glass-select">
+          <option value="">-- Select Video --</option>
+          {% for video in videos %}
+            <option value="{{ video }}">{{ video }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <video id="video-player" controls preload="none" style="display:none; width:100%; height:180px; border-radius:12px; background:#000; border:1px solid rgba(255,255,255,0.2);">
+        <source id="video-source" src="" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
+      <button class="delete-btn" id="delete-btn" style="display:none;">Delete Video</button>
+    </div>
+  </div>
+
+  <footer>AI Access System - {{ name }}</footer>
+
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
+  <script>
+    // Clock
+    for (let i = 0; i < 60; i++) {
+      const line = document.createElement('div');
+      line.className = 'diallines';
+      line.style.transform = `rotate(${i * 6}deg)`;
+      document.querySelector('.clock').appendChild(line);
+    }
+
+    function updateClock() {
+      const now = new Date();
+      const h = now.getHours() % 12;
+      const m = now.getMinutes();
+      const s = now.getSeconds();
+      document.querySelector('.hour-hand').style.transform = `rotate(${h * 30 + m * 0.5}deg)`;
+      document.querySelector('.minute-hand').style.transform = `rotate(${m * 6 + s * 0.1}deg)`;
+      document.querySelector('.second-hand').style.transform = `rotate(${s * 6}deg)`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Video Player
+    const select = document.getElementById('video-select');
+    const video = document.getElementById('video-player');
+    const source = document.getElementById('video-source');
+    const deleteBtn = document.getElementById('delete-btn');
+
+    select.addEventListener('change', () => {
+      const file = select.value;
+      if (file) {
+        const url = `/videos/${encodeURIComponent(file)}?t=${Date.now()}`;
+        source.src = url;
+        video.style.display = 'block';
+        video.load();  // Forces video to reload — FIXED
+        deleteBtn.style.display = 'block';
+
+        deleteBtn.onclick = () => {
+          if (confirm('Delete this video?')) {
+            fetch('/delete_video', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ filename: file })
+            }).then(() => location.reload());
+          }
+        };
+      } else {
+        source.src = '';
+        video.style.display = 'none';
+        deleteBtn.style.display = 'none';
+      }
+    });
+
+    // Cancel Meeting
+    document.getElementById('today-slots').addEventListener('click', function(e) {
+      if (e.target && e.target.classList.contains('cancel-btn')) {
+        const index = e.target.getAttribute('data-index');
+        if (confirm('Cancel this meeting?')) {
+          fetch('/cancel_meeting', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              date: '{{ today_date|e }}', 
+              index: parseInt(index) 
+            })
+          }).then(() => location.reload());
+        }
+      }
+    });
+  </script>
+</body>
+</html>
